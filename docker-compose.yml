@@ -22,9 +22,11 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydroponic
+      DATABASE_URL: postgresql+psycopg2://myuser:mypassword@mydroponic-db:5432/mydroponic
     networks:
       - backend
+    env_file:
+      - .env
 
   nginx:
     build: ./nginx
