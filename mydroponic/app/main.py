@@ -24,10 +24,11 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, ForeignKey, DECIMAL, TIMESTAMP, func
+from sqlalchemy import create_engine, Column, Integer, String, text, Boolean, Date, ForeignKey, DECIMAL, TIMESTAMP, func
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, Session
 #from .db import DATABASE_URL
 import os
+from datetime import datetime, date
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://myuser:mypassword@mydroponic-db:5432/mydroponic")
 
@@ -125,10 +126,10 @@ class PlantOut(BaseModel):
     germination_date: Optional[str]
     planting_date: Optional[str]
     active: Optional[bool]
-    created_at: Optional[str]
+    created_at: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class HarvestCreate(BaseModel):
     plant_id: int
@@ -138,7 +139,7 @@ class HarvestCreate(BaseModel):
 # -------------------
 # FastAPI App
 # -------------------
-app = FastAPI(title="Mydroponic")
+app = FastAPI(title="Mydroponic", root_path="/api")
 
 def get_db():
     db = SessionLocal()
@@ -146,6 +147,32 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# ---- Health Check ----
+@app.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    status = {"db": "ok"}
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        status["db"] = f"error: {e}"
+
+    # Check each table
+    checks = {
+        "farms": Farm,
+        "floors": Floor,
+        "pots": Pot,
+        "plants": Plant,
+        "harvests": HarvestDate,
+    }
+    for name, model in checks.items():
+        try:
+            db.query(model).limit(1).all()
+            status[name] = "ok"
+        except Exception as e:
+            status[name] = f"error: {e}"
+
+    return status
 
 # ---- Farms ----
 @app.post("/farms")

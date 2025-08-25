@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Mydroponic Plants</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .status-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .status-ok { background: #2ecc40; }
+        .status-error { background: #ff4136; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background: #f4f4f4; }
+        .api-list { list-style: none; padding: 0; }
+        .api-list li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Mydroponic Plants</h1>
+    <div>
+    <h2>API Endpoints</h2>
+    <ul class="api-list" id="api-list">
+        <li data-key="db"><span class="status-icon" id="status-db"></span><a href="/api/health" target="_blank">/api/health</a></li>
+        <li data-key="farms"><span class="status-icon" id="status-farms"></span><a href="/api/farms" target="_blank">/api/farms</a></li>
+        <li data-key="floors"><span class="status-icon" id="status-floors"></span><a href="/api/floors" target="_blank">/api/floors</a></li>
+        <li data-key="pots"><span class="status-icon" id="status-pots"></span><a href="/api/pots" target="_blank">/api/pots</a></li>
+        <li data-key="plants"><span class="status-icon" id="status-plants"></span><a href="/api/plants" target="_blank">/api/plants</a></li>
+        <li data-key="harvests"><span class="status-icon" id="status-harvests"></span><a href="/api/harvests" target="_blank">/api/harvests</a></li>
+    </ul>
+    </div>
+    <table id="plants-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>QR Code</th>
+                <th>Species</th>
+                <th>Variety</th>
+                <th>Germination Date</th>
+                <th>Planting Date</th>
+                <th>Active</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <script>
+        async function fetchHealth() {
+            const res = await fetch('/api/health');
+            const data = await res.json();
+            // For each key in health response, set icon color
+            for (const key of Object.keys(data)) {
+                const icon = document.getElementById('status-' + key);
+                if (!icon) continue;
+                if (data[key] === 'ok') {
+                    icon.className = 'status-icon status-ok';
+                    icon.title = 'OK';
+                } else {
+                    icon.className = 'status-icon status-error';
+                    icon.title = data[key];
+                }
+            }
+        }
+
+        async function fetchPlants() {
+        const res = await fetch('/api/plants');
+        const plants = await res.json();
+        const tbody = document.querySelector('#plants-table tbody');
+        tbody.innerHTML = '';
+        plants.forEach(plant => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${plant.id}</td>
+                <td><div id="qr-${plant.id}"></div></td>
+                <td>${plant.species || ''}</td>
+                <td>${plant.variety || ''}</td>
+                <td>${plant.germination_date || ''}</td>
+                <td>${plant.planting_date || ''}</td>
+                <td>${plant.active ? 'Yes' : 'No'}</td>
+                <td>${plant.created_at || ''}</td>
+            `;
+            tbody.appendChild(tr);
+            // Generate QR code
+            const qrDiv = document.getElementById(`qr-${plant.id}`);
+            const url = `/plant.html?qr_code=${encodeURIComponent(plant.qr_code)}`;
+            new QRCode(qrDiv, {
+                text: url,
+                width: 64,
+                height: 64
+            });
+        });
+    }
+
+        fetchHealth();
+        fetchPlants();
+    </script>
+</body>
+</html>
