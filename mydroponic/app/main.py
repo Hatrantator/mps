@@ -116,6 +116,20 @@ class PlantCreate(BaseModel):
     germination_date: Optional[str] = None
     planting_date: Optional[str] = None
 
+class PlantOut(BaseModel):
+    id: int
+    pot_id: Optional[int]
+    qr_code: str
+    species: Optional[str]
+    variety: Optional[str]
+    germination_date: Optional[str]
+    planting_date: Optional[str]
+    active: Optional[bool]
+    created_at: Optional[str]
+
+    class Config:
+        orm_mode = True
+
 class HarvestCreate(BaseModel):
     plant_id: int
     harvest_date: str
@@ -181,7 +195,7 @@ def create_plant(plant: PlantCreate, db: Session = Depends(get_db)):
     db.refresh(db_plant)
     return db_plant
 
-@app.get("/plants")
+@app.get("/plants", response_model=List[PlantOut])
 def list_plants(db: Session = Depends(get_db)):
     return db.query(Plant).all()
 
