@@ -21,7 +21,7 @@
 #    rows = await database.fetch_all(query)
 #    return {"plants": rows}
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Body
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy import create_engine, Column, Integer, String, text, Boolean, Date, ForeignKey, DECIMAL, TIMESTAMP, func
@@ -187,6 +187,26 @@ def create_farm(farm: FarmCreate, db: Session = Depends(get_db)):
 def list_farms(db: Session = Depends(get_db)):
     return db.query(Farm).all()
 
+@app.put("/farms/{farm_id}")
+def update_farm(farm_id: int, farm: FarmCreate = Body(...), db: Session = Depends(get_db)):
+    db_farm = db.query(Farm).get(farm_id)
+    if not db_farm:
+        raise HTTPException(status_code=404, detail="Farm not found")
+    db_farm.name = farm.name
+    db_farm.location = farm.location
+    db.commit()
+    db.refresh(db_farm)
+    return db_farm
+
+@app.delete("/farms/{farm_id}")
+def delete_farm(farm_id: int, db: Session = Depends(get_db)):
+    db_farm = db.query(Farm).get(farm_id)
+    if not db_farm:
+        raise HTTPException(status_code=404, detail="Farm not found")
+    db.delete(db_farm)
+    db.commit()
+    return {"detail": "Farm deleted"}
+
 # ---- Floors ----
 @app.post("/floors")
 def create_floor(floor: FloorCreate, db: Session = Depends(get_db)):
@@ -199,6 +219,27 @@ def create_floor(floor: FloorCreate, db: Session = Depends(get_db)):
 @app.get("/floors")
 def list_floors(db: Session = Depends(get_db)):
     return db.query(Floor).all()
+
+@app.put("/floors/{floor_id}")
+def update_floor(floor_id: int, floor: FloorCreate = Body(...), db: Session = Depends(get_db)):
+    db_floor = db.query(Floor).get(floor_id)
+    if not db_floor:
+        raise HTTPException(status_code=404, detail="Floor not found")
+    db_floor.farm_id = floor.farm_id
+    db_floor.name = floor.name
+    db_floor.level = floor.level
+    db.commit()
+    db.refresh(db_floor)
+    return db_floor
+
+@app.delete("/floors/{floor_id}")
+def delete_floor(floor_id: int, db: Session = Depends(get_db)):
+    db_floor = db.query(Floor).get(floor_id)
+    if not db_floor:
+        raise HTTPException(status_code=404, detail="Floor not found")
+    db.delete(db_floor)
+    db.commit()
+    return {"detail": "Floor deleted"}
 
 # ---- Pots ----
 @app.post("/pots")
@@ -213,6 +254,26 @@ def create_pot(pot: PotCreate, db: Session = Depends(get_db)):
 def list_pots(db: Session = Depends(get_db)):
     return db.query(Pot).all()
 
+@app.put("/pots/{pot_id}")
+def update_pot(pot_id: int, pot: PotCreate = Body(...), db: Session = Depends(get_db)):
+    db_pot = db.query(Pot).get(pot_id)
+    if not db_pot:
+        raise HTTPException(status_code=404, detail="Pot not found")
+    db_pot.floor_id = pot.floor_id
+    db_pot.location_code = pot.location_code
+    db.commit()
+    db.refresh(db_pot)
+    return db_pot
+
+@app.delete("/pots/{pot_id}")
+def delete_pot(pot_id: int, db: Session = Depends(get_db)):
+    db_pot = db.query(Pot).get(pot_id)
+    if not db_pot:
+        raise HTTPException(status_code=404, detail="Pot not found")
+    db.delete(db_pot)
+    db.commit()
+    return {"detail": "Pot deleted"}
+
 # ---- Plants ----
 @app.post("/plants")
 def create_plant(plant: PlantCreate, db: Session = Depends(get_db)):
@@ -226,6 +287,30 @@ def create_plant(plant: PlantCreate, db: Session = Depends(get_db)):
 def list_plants(db: Session = Depends(get_db)):
     return db.query(Plant).all()
 
+@app.put("/plants/{plant_id}")
+def update_plant(plant_id: int, plant: PlantCreate = Body(...), db: Session = Depends(get_db)):
+    db_plant = db.query(Plant).get(plant_id)
+    if not db_plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+    db_plant.pot_id = plant.pot_id
+    db_plant.qr_code = plant.qr_code
+    db_plant.species = plant.species
+    db_plant.variety = plant.variety
+    db_plant.germination_date = plant.germination_date
+    db_plant.planting_date = plant.planting_date
+    db.commit()
+    db.refresh(db_plant)
+    return db_plant
+
+@app.delete("/plants/{plant_id}")
+def delete_plant(plant_id: int, db: Session = Depends(get_db)):
+    db_plant = db.query(Plant).get(plant_id)
+    if not db_plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+    db.delete(db_plant)
+    db.commit()
+    return {"detail": "Plant deleted"}
+
 # ---- Harvests ----
 @app.post("/harvests")
 def create_harvest(harvest: HarvestCreate, db: Session = Depends(get_db)):
@@ -238,3 +323,24 @@ def create_harvest(harvest: HarvestCreate, db: Session = Depends(get_db)):
 @app.get("/harvests")
 def list_harvests(db: Session = Depends(get_db)):
     return db.query(HarvestDate).all()
+
+@app.put("/harvests/{harvest_id}")
+def update_harvest(harvest_id: int, harvest: HarvestCreate = Body(...), db: Session = Depends(get_db)):
+    db_harvest = db.query(HarvestDate).get(harvest_id)
+    if not db_harvest:
+        raise HTTPException(status_code=404, detail="Harvest not found")
+    db_harvest.plant_id = harvest.plant_id
+    db_harvest.harvest_date = harvest.harvest_date
+    db_harvest.yield_weight = harvest.yield_weight
+    db.commit()
+    db.refresh(db_harvest)
+    return db_harvest
+
+@app.delete("/harvests/{harvest_id}")
+def delete_harvest(harvest_id: int, db: Session = Depends(get_db)):
+    db_harvest = db.query(HarvestDate).get(harvest_id)
+    if not db_harvest:
+        raise HTTPException(status_code=404, detail="Harvest not found")
+    db.delete(db_harvest)
+    db.commit()
+    return {"detail": "Harvest deleted"}
