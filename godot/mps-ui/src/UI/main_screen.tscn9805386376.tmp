@@ -1,0 +1,137 @@
+[gd_scene load_steps=6 format=3 uid="uid://o22gpnixaqqi"]
+
+[ext_resource type="PackedScene" uid="uid://bl8s2gtfq3qr0" path="res://src/UI/bg.tscn" id="1_nb075"]
+[ext_resource type="Script" uid="uid://dbxvlnubi6rj3" path="res://src/UI/grid_container.gd" id="2_7s5qe"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_7s5qe"]
+font_size = 48
+font_color = Color(0.22352941, 0.627451, 0.92941177, 1)
+outline_size = 8
+outline_color = Color(0.21568628, 0.5882353, 0.20392157, 1)
+shadow_size = 14
+shadow_color = Color(0.45490196, 0.42745098, 0.45882353, 1)
+shadow_offset = Vector2(2, 2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nb075"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.27525774, 0.25563148, 0.27806866, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7s5qe"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.09151053, 0.47146863, 0.73596907, 0.6)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+corner_detail = 5
+
+[node name="MainScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="BG" parent="." instance=ExtResource("1_nb075")]
+layout_mode = 1
+
+[node name="ColorRect" type="ColorRect" parent="BG"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="MainScreenVBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="Title" type="Label" parent="MainScreenVBoxContainer"]
+layout_mode = 2
+text = "Mydroponics"
+label_settings = SubResource("LabelSettings_7s5qe")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MainScreenVBoxContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainScreenVBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FarmContainer" type="GridContainer" parent="MainScreenVBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 4
+script = ExtResource("2_7s5qe")
+
+[node name="HTTPRequest" type="HTTPRequest" parent="MainScreenVBoxContainer/ScrollContainer/FarmContainer"]
+
+[node name="MainScreenMenu" type="PanelContainer" parent="MainScreenVBoxContainer"]
+custom_minimum_size = Vector2(0, 256)
+layout_mode = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="MainScreenVBoxContainer/MainScreenMenu"]
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MainScreenVBoxContainer/MainScreenMenu/CenterContainer"]
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+theme_override_constants/separation = 64
+
+[node name="FarmMenuButton" type="Button" parent="MainScreenVBoxContainer/MainScreenMenu/CenterContainer/HBoxContainer"]
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_nb075")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_7s5qe")
+text = "Farm"
+
+[node name="PlantMenuButton" type="Button" parent="MainScreenVBoxContainer/MainScreenMenu/CenterContainer/HBoxContainer"]
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_nb075")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_7s5qe")
+text = "Plant"
+
+[node name="CalendarMenuButton" type="Button" parent="MainScreenVBoxContainer/MainScreenMenu/CenterContainer/HBoxContainer"]
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_nb075")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_7s5qe")
+text = "Calendar"
+
+[node name="SettingsMenuButton" type="Button" parent="MainScreenVBoxContainer/MainScreenMenu/CenterContainer/HBoxContainer"]
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_nb075")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_7s5qe")
+text = "Settings"
+
+[connection signal="request_completed" from="MainScreenVBoxContainer/ScrollContainer/FarmContainer/HTTPRequest" to="MainScreenVBoxContainer/ScrollContainer/FarmContainer" method="_on_http_request_request_completed"]

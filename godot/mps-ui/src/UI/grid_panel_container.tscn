@@ -1,0 +1,47 @@
+[gd_scene load_steps=3 format=3 uid="uid://c4mg5n0mx1pq6"]
+
+[ext_resource type="Script" uid="uid://duq2kbu7as42l" path="res://src/UI/grid_panel_container.gd" id="1_l6s7m"]
+[ext_resource type="Texture2D" uid="uid://bnr17a82r32i2" path="res://bckp_icon.svg" id="1_pnhk1"]
+
+[node name="GridPanelContainer" type="PanelContainer"]
+custom_minimum_size = Vector2(330, 330)
+anchors_preset = -1
+anchor_left = 0.3472222
+anchor_top = 0.4140625
+anchor_right = 0.6527778
+anchor_bottom = 0.5859375
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+script = ExtResource("1_l6s7m")
+metadata/_edit_use_anchors_ = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(330, 0)
+layout_mode = 2
+
+[node name="PanelNameLabel" type="Label" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+text = "NAME"
+vertical_alignment = 1
+
+[node name="PanelIDLabel" type="Label" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(30, 60)
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Icon" type="TextureRect" parent="VBoxContainer"]
+custom_minimum_size = Vector2(192, 192)
+layout_mode = 2
+size_flags_horizontal = 4
+texture = ExtResource("1_pnhk1")
+expand_mode = 1
+
+[connection signal="gui_input" from="." to="." method="_on_gui_input"]

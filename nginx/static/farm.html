@@ -1,0 +1,254 @@
+<!-- farm.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Farm Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        h2 { margin-top: 2em; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+        th, td { border: 1px solid #ccc; padding: 0.5em; }
+        input, select, button { margin: 0.2em; }
+        .section { border: 1px solid #eee; padding: 1em; margin-bottom: 2em; }
+    </style>
+</head>
+<body>
+    <h1>Farm Manager</h1>
+    <div id="farm-section" class="section">
+        <h2>Farm Details</h2>
+        <form id="farm-form">
+            <label>Name: <input type="text" id="farm-name"></label>
+            <label>Location: <input type="text" id="farm-location"></label>
+            <button type="submit">Update Farm</button>
+            <button type="button" id="delete-farm-btn" style="color:red;">Delete Farm</button>
+        </form>
+        <div id="farm-info"></div>
+    </div>
+
+    <div id="floors-section" class="section">
+        <h2>Floors</h2>
+        <table id="floors-table">
+            <thead>
+                <tr><th>ID</th><th>Name</th><th>Level</th><th>Actions</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <form id="floor-form">
+            <input type="text" id="floor-name" placeholder="Floor Name" required>
+            <input type="number" id="floor-level" placeholder="Level">
+            <button type="submit">Add Floor</button>
+        </form>
+    </div>
+
+    <div id="pots-section" class="section">
+        <h2>Pots</h2>
+        <table id="pots-table">
+            <thead>
+                <tr><th>ID</th><th>Floor ID</th><th>Location Code</th><th>Actions</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <form id="pot-form">
+            <select id="pot-floor-id"></select>
+            <input type="text" id="pot-location-code" placeholder="Location Code" required>
+            <button type="submit">Add Pot</button>
+        </form>
+    </div>
+
+    <div id="plants-section" class="section">
+        <h2>Plants</h2>
+        <table id="plants-table">
+            <thead>
+                <tr><th>ID</th><th>Pot ID</th><th>QR Code</th><th>Species</th><th>Variety</th><th>Actions</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <form id="plant-form">
+            <select id="plant-pot-id"></select>
+            <input type="text" id="plant-qr-code" placeholder="QR Code" required>
+            <input type="text" id="plant-species" placeholder="Species">
+            <input type="text" id="plant-variety" placeholder="Variety">
+            <button type="submit">Add Plant</button>
+        </form>
+    </div>
+
+<script>
+const apiBase = "/api";
+const farmName = window.location.pathname.split("/").pop();
+
+let farmId = null;
+let floors = [];
+let pots = [];
+let plants = [];
+
+async function fetchFarm() {
+    // Get all farms, find by name
+    const farms = await fetch(`${apiBase}/farms`).then(r => r.json());
+    const farm = farms.find(f => f.name === farmName);
+    if (!farm) {
+        document.getElementById("farm-info").innerText = "Farm not found!";
+        return;
+    }
+    farmId = farm.id;
+    document.getElementById("farm-name").value = farm.name;
+    document.getElementById("farm-location").value = farm.location || "";
+    document.getElementById("farm-info").innerText = `ID: ${farm.id}, Created: ${farm.created_at}`;
+    await fetchFloors();
+}
+
+async function fetchFloors() {
+    floors = await fetch(`${apiBase}/floors`).then(r => r.json());
+    const farmFloors = floors.filter(f => f.farm_id === farmId);
+    const tbody = document.querySelector("#floors-table tbody");
+    tbody.innerHTML = "";
+    farmFloors.forEach(floor => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${floor.id}</td><td>${floor.name}</td><td>${floor.level||""}</td>
+            <td>
+                <button onclick="deleteFloor(${floor.id})">Delete</button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    // Update floor select for pots
+    const floorSelect = document.getElementById("pot-floor-id");
+    floorSelect.innerHTML = "";
+    farmFloors.forEach(floor => {
+        const opt = document.createElement("option");
+        opt.value = floor.id;
+        opt.text = `${floor.name} (ID:${floor.id})`;
+        floorSelect.appendChild(opt);
+    });
+    await fetchPots();
+}
+
+async function fetchPots() {
+    pots = await fetch(`${apiBase}/pots`).then(r => r.json());
+    const farmPots = pots.filter(p => floors.some(f => f.id === p.floor_id && f.farm_id === farmId));
+    const tbody = document.querySelector("#pots-table tbody");
+    tbody.innerHTML = "";
+    farmPots.forEach(pot => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${pot.id}</td><td>${pot.floor_id}</td><td>${pot.location_code}</td>
+            <td>
+                <button onclick="deletePot(${pot.id})">Delete</button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    // Update pot select for plants
+    const potSelect = document.getElementById("plant-pot-id");
+    potSelect.innerHTML = "";
+    farmPots.forEach(pot => {
+        const opt = document.createElement("option");
+        opt.value = pot.id;
+        opt.text = `${pot.location_code} (ID:${pot.id})`;
+        potSelect.appendChild(opt);
+    });
+    await fetchPlants();
+}
+
+async function fetchPlants() {
+    plants = await fetch(`${apiBase}/plants`).then(r => r.json());
+    const farmPlants = plants.filter(pl => pots.some(p => p.id === pl.pot_id));
+    const tbody = document.querySelector("#plants-table tbody");
+    tbody.innerHTML = "";
+    farmPlants.forEach(plant => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${plant.id}</td><td>${plant.pot_id}</td><td>${plant.qr_code}</td>
+            <td>${plant.species||""}</td><td>${plant.variety||""}</td>
+            <td>
+                <button onclick="deletePlant(${plant.id})">Delete</button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+document.getElementById("farm-form").onsubmit = async function(e) {
+    e.preventDefault();
+    await fetch(`${apiBase}/farms/${farmId}`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            name: document.getElementById("farm-name").value,
+            location: document.getElementById("farm-location").value
+        })
+    });
+    alert("Farm updated!");
+    await fetchFarm();
+};
+
+document.getElementById("delete-farm-btn").onclick = async function() {
+    if (confirm("Delete this farm?")) {
+        await fetch(`${apiBase}/farms/${farmId}`, {method: "DELETE"});
+        alert("Farm deleted!");
+        window.location.href = "/";
+    }
+};
+
+document.getElementById("floor-form").onsubmit = async function(e) {
+    e.preventDefault();
+    await fetch(`${apiBase}/floors`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            farm_id: farmId,
+            name: document.getElementById("floor-name").value,
+            level: document.getElementById("floor-level").value || null
+        })
+    });
+    await fetchFloors();
+};
+
+window.deleteFloor = async function(id) {
+    if (confirm("Delete this floor?")) {
+        await fetch(`${apiBase}/floors/${id}`, {method: "DELETE"});
+        await fetchFloors();
+    }
+};
+
+document.getElementById("pot-form").onsubmit = async function(e) {
+    e.preventDefault();
+    await fetch(`${apiBase}/pots`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            floor_id: document.getElementById("pot-floor-id").value,
+            location_code: document.getElementById("pot-location-code").value
+        })
+    });
+    await fetchPots();
+};
+
+window.deletePot = async function(id) {
+    if (confirm("Delete this pot?")) {
+        await fetch(`${apiBase}/pots/${id}`, {method: "DELETE"});
+        await fetchPots();
+    }
+};
+
+document.getElementById("plant-form").onsubmit = async function(e) {
+    e.preventDefault();
+    await fetch(`${apiBase}/plants`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            pot_id: document.getElementById("plant-pot-id").value,
+            qr_code: document.getElementById("plant-qr-code").value,
+            species: document.getElementById("plant-species").value,
+            variety: document.getElementById("plant-variety").value
+        })
+    });
+    await fetchPlants();
+};
+
+window.deletePlant = async function(id) {
+    if (confirm("Delete this plant?")) {
+        await fetch(`${apiBase}/plants/${id}`, {method: "DELETE"});
+        await fetchPlants();
+    }
+};
+
+fetchFarm();
+</script>
+</body>
+</html>

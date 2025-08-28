@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3 uid="uid://dhsbtcpf3c1ki"]
+
+[ext_resource type="Texture2D" uid="uid://b18yer1kv21w2" path="res://Assets/qr_default_01.png" id="1_bepqk"]
+[ext_resource type="Script" uid="uid://qu5yexabq276" path="res://src/UI/QR/qr_code.gd" id="1_uw4ol"]
+
+[node name="QRCode" type="TextureRect"]
+custom_minimum_size = Vector2(150, 150)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("1_bepqk")
+expand_mode = 1
+stretch_mode = 4
+script = ExtResource("1_uw4ol")
+qr_string = "plant123"
+
+[node name="HTTPRequest" type="HTTPRequest" parent="."]
+
+[connection signal="request_completed" from="HTTPRequest" to="." method="_on_http_request_request_completed"]

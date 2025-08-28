@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://n3fu4no16csc"]
+
+[ext_resource type="Script" uid="uid://dbxvlnubi6rj3" path="res://src/UI/grid_container.gd" id="1_lj7l4"]
+
+[node name="HTTPGridContainer" type="GridContainer"]
+custom_minimum_size = Vector2(330, 300)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/h_separation = 15
+theme_override_constants/v_separation = 15
+columns = 3
+script = ExtResource("1_lj7l4")
+
+[node name="HTTPRequest" type="HTTPRequest" parent="."]
+
+[connection signal="request_completed" from="HTTPRequest" to="." method="_on_http_request_request_completed"]
