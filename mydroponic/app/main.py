@@ -1,34 +1,12 @@
-#from fastapi import FastAPI
-#from .db import database
-#
-#app = FastAPI(title="Mydroponic")
-#
-#@app.on_event("startup")
-#async def startup():
-#    await database.connect()
-#
-#@app.on_event("shutdown")
-#async def shutdown():
-#    await database.disconnect()
-#
-#@app.get("/")
-#async def read_root():
-#    return {"message": "Hello from Mydroponic!"}
-#
-#@app.get("/plants")
-#async def get_plants():
-#    query = "SELECT * FROM plants;"
-#    rows = await database.fetch_all(query)
-#    return {"plants": rows}
-
 from fastapi import FastAPI, HTTPException, Depends, Body
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy import create_engine, Column, Integer, String, text, Boolean, Date, ForeignKey, DECIMAL, TIMESTAMP, func
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, Session
-#from .db import DATABASE_URL
 import os
 from datetime import datetime, date
+import paho.mqtt.client as mqtt
+import json
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://myuser:mypassword@mydroponic-db:5432/mydroponic")
 
@@ -36,6 +14,19 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://myuser:mypasswor
 engine = create_engine(DATABASE_URL, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
+
+# MQTT setup
+MQTT_BROKER = "192.168.7.216"
+MQTT_PORT = 1883
+MQTT_USER = "usr"
+MQTT_PASSWORD = "password"
+DISCOVERY_PREFIX = "homeassistant"
+
+mqtt_client = mqtt.Client()
+mqtt_client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
+mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+
+mqtt_version = "v0.1-alpha"
 
 # -------------------
 # Database Models
@@ -137,9 +128,145 @@ class HarvestCreate(BaseModel):
     yield_weight: Optional[float] = None
 
 # -------------------
+# MQTT App
+# -------------------
+
+# ---- Farms ----
+def farm_uid(farm) -> str:
+    return f"{farm.id}"
+
+def publish_discovery_for_farm(farm):
+    uid = farm_uid(farm)
+    device = {
+        "identifiers": [f"farm_{uid}"],
+        "name": f"{farm.name}",
+        "manufacturer": "Mydroponics",
+        "model": "Modular Hydroponic Tower ",
+        "sw_version": mqtt_version
+    }
+    # Status sensor
+    status_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/farm_{uid}_status/config"
+    status_cfg_payload = {
+        "name": f"{farm.name} Status",
+        "unique_id": f"farm_{uid}_status",
+        "state_topic": f"farms/{uid}/state",
+        "value_template": "{{ value_json.status }}",
+        "json_attributes_topic": f"farms/{uid}/state",
+        "json_attributes_template": "{{ value_json | tojson }}",
+        "icon": "mdi:tractor-variant",
+        "device": device
+    }
+    mqtt_client.publish(status_cfg_topic, json.dumps(status_cfg_payload), retain=True)
+
+def publish_state_for_farm(farm):
+    uid = farm_uid(farm)
+    topic = f"farms/{uid}/state"
+    payload = {
+        "id": f"{uid}",
+        "name": farm.name,
+        "location": farm.location,
+        "created_at": str(farm.created_at) if farm.created_at else None
+    }
+    mqtt_client.publish(topic, json.dumps(payload), retain=True)
+
+def delete_farm_from_ha(uid: str):
+    # Publish empty retained payloads to remove entities & state
+    topics = [
+        f"{DISCOVERY_PREFIX}/sensor/farm_{uid}_status/config",
+        f"farms/{uid}/state"
+    ]
+    for t in topics:
+        mqtt_client.publish(t, b"", retain=True)
+
+# ---- Plants ----
+def plant_uid(plant) -> str:
+    if plant.qr_code:
+        # sanitize qr_code to alnum/underscore just in case
+        return "qr_" + "".join(ch if ch.isalnum() else "_" for ch in plant.qr_code)
+    return f"id{plant.id}"
+
+def publish_discovery_for_plant(plant):
+    uid = plant_uid(plant)
+    device = {
+        "identifiers": [f"plant_{uid}"],
+        "name": f"{plant.species} {plant.variety}",
+        "manufacturer": "Mydroponics",
+        "model": "Plant",
+        "sw_version": "1.0"
+    }
+
+    # Species sensor
+    species_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_species/config"
+    species_cfg_payload = {
+        "name": f"{plant.species}",
+        "unique_id": f"plant_{uid}_species",
+        "state_topic": f"plants/{uid}/state",
+        "value_template": "{{ value_json.species }}",
+        "json_attributes_topic": f"plants/{uid}/state",
+        "json_attributes_template": "{{ value_json | tojson }}",
+        "icon": "mdi:sprout",
+        "device": device
+    }
+    mqtt_client.publish(species_cfg_topic, json.dumps(species_cfg_payload), retain=True)
+
+    # Variety sensor
+    variety_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_variety/config"
+    variety_cfg_payload = {
+        "name": f"{plant.variety}",
+        "unique_id": f"plant_{uid}_variety",
+        "state_topic": f"plants/{uid}/state",
+        "value_template": "{{ value_json.variety }}",
+        "icon": "mdi:flower-outline",
+        "device": device
+    }
+    mqtt_client.publish(variety_cfg_topic, json.dumps(variety_cfg_payload), retain=True)
+
+    # Active binary_sensor
+    active_cfg_topic = f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_active/config"
+    active_cfg_payload = {
+        "name": f"Plant {uid} Active",
+        "unique_id": f"plant_{uid}_active",
+        "state_topic": f"plants/{uid}/state",
+        "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
+        "payload_on": "ON",
+        "payload_off": "OFF",
+        "icon": "mdi:power",
+        "device": device
+    }
+    mqtt_client.publish(active_cfg_topic, json.dumps(active_cfg_payload), retain=True)
+
+def publish_state_for_plant(plant):
+    uid = plant_uid(plant)
+    topic = f"plants/{uid}/state"
+    payload = {
+        "id": plant.id,
+        "pot_id": plant.pot_id,
+        "qr_code": plant.qr_code,
+        "species": plant.species,
+        "variety": plant.variety,
+        "germination_date": str(plant.germination_date) if plant.germination_date else None,
+        "planting_date": str(plant.planting_date) if plant.planting_date else None,
+        "active": bool(plant.active) if plant.active is not None else None,
+        "created_at": str(plant.created_at) if plant.created_at else None
+    }
+    mqtt_client.publish(topic, json.dumps(payload), retain=True)
+
+def delete_plant_from_ha(uid: str):
+    # Publish empty retained payloads to remove entities & state
+    topics = [
+        f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_species/config",
+        f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_variety/config",
+        f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_active/config",
+        f"plants/{uid}/state"
+    ]
+    for t in topics:
+        mqtt_client.publish(t, b"", retain=True)
+
+# -------------------
 # FastAPI App
 # -------------------
 app = FastAPI(title="Mydroponic", root_path="/api")
+
 
 def get_db():
     db = SessionLocal()
@@ -147,6 +274,21 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.on_event("startup")
+def on_startup():
+    # On boot, (re)announce all plants so HA is always in sync
+    db = next(get_db())
+    try:
+        for plant in db.query(Plant).all():
+            publish_discovery_for_plant(plant)
+            publish_state_for_plant(plant)
+        for farm in db.query(Farm).all():
+            publish_discovery_for_farm(farm)
+            publish_state_for_farm(farm)
+    finally:
+        db.close()
+
 
 # ---- Health Check ----
 @app.get("/health")
@@ -185,7 +327,13 @@ def create_farm(farm: FarmCreate, db: Session = Depends(get_db)):
 
 @app.get("/farms")
 def list_farms(db: Session = Depends(get_db)):
-    return db.query(Farm).all()
+    farms = db.query(Farm).all()
+
+    # MQTT publish for each plant
+    for farm in farms:
+       publish_discovery_for_farm(farm)
+       publish_state_for_farm(farm)
+    return farms
 
 @app.put("/farms/{farm_id}")
 def update_farm(farm_id: int, farm: FarmCreate = Body(...), db: Session = Depends(get_db)):
@@ -285,7 +433,13 @@ def create_plant(plant: PlantCreate, db: Session = Depends(get_db)):
 
 @app.get("/plants", response_model=List[PlantOut])
 def list_plants(db: Session = Depends(get_db)):
-    return db.query(Plant).all()
+    plants = db.query(Plant).all()
+
+    # MQTT publish for each plant
+    for plant in plants:
+       publish_discovery_for_plant(plant)
+       publish_state_for_plant(plant)
+    return plants
 
 @app.put("/plants/{plant_id}")
 def update_plant(plant_id: int, plant: PlantCreate = Body(...), db: Session = Depends(get_db)):

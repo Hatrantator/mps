@@ -3,7 +3,10 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt psycopg2-binary alembic
+RUN pip install --no-cache-dir -r requirements.txt psycopg2-binary alembic paho-mqtt
+# psycopg2-binnary = PostgreSQL adapter
+# alembic = database migrations
+# paho-mqtt = MQTT client
 
 COPY app ./app
 COPY alembic ./alembic
