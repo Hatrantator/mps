@@ -18,8 +18,8 @@ Base = declarative_base()
 # MQTT setup
 MQTT_BROKER = "192.168.7.216"
 MQTT_PORT = 1883
-MQTT_USER = "usr"
-MQTT_PASSWORD = "password"
+MQTT_USER = "tx_mqtt"
+MQTT_PASSWORD = "mqttpassword"
 DISCOVERY_PREFIX = "homeassistant"
 
 mqtt_client = mqtt.Client()
@@ -37,7 +37,7 @@ class Farm(Base):
     name = Column(String, nullable=False)
     location = Column(String)
     created_at = Column(TIMESTAMP, server_default=func.now())
-    floors = relationship("Floor", back_populates="farm", cascade="all, delete")
+    #floors = relationship("Floor", back_populates="farm", cascade="all, delete")
 
 class Floor(Base):
     __tablename__ = "floors"
@@ -46,8 +46,8 @@ class Floor(Base):
     name = Column(String, nullable=False)
     level = Column(Integer)
     created_at = Column(TIMESTAMP, server_default=func.now())
-    farm = relationship("Farm", back_populates="floors")
-    pots = relationship("Pot", back_populates="floor", cascade="all, delete")
+    #farm = relationship("Farm", back_populates="floors")
+    #pots = relationship("Pot", back_populates="floor", cascade="all, delete")
 
 class Pot(Base):
     __tablename__ = "pots"
@@ -55,8 +55,8 @@ class Pot(Base):
     floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
     location_code = Column(String)
     created_at = Column(TIMESTAMP, server_default=func.now())
-    floor = relationship("Floor", back_populates="pots")
-    plants = relationship("Plant", back_populates="pot", cascade="all, delete")
+    #floor = relationship("Floor", back_populates="pots")
+    #plants = relationship("Plant", back_populates="pot", cascade="all, delete")
 
 class Plant(Base):
     __tablename__ = "plants"
@@ -69,7 +69,7 @@ class Plant(Base):
     planting_date = Column(Date)
     active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
-    pot = relationship("Pot", back_populates="plants")
+    #pot = relationship("Pot", back_populates="plants")
     harvests = relationship("HarvestDate", back_populates="plant", cascade="all, delete")
 
 class HarvestDate(Base):
@@ -92,16 +92,16 @@ class FarmCreate(BaseModel):
     location: Optional[str] = None
 
 class FloorCreate(BaseModel):
-    farm_id: int
+    #farm_id: int
     name: str
     level: Optional[int] = None
 
 class PotCreate(BaseModel):
-    floor_id: int
+    #floor_id: int
     location_code: str
 
 class PlantCreate(BaseModel):
-    pot_id: int
+    #pot_id: int
     qr_code: str
     species: str
     variety: Optional[str] = None
@@ -110,7 +110,7 @@ class PlantCreate(BaseModel):
 
 class PlantOut(BaseModel):
     id: int
-    pot_id: Optional[int]
+    #pot_id: Optional[int]
     qr_code: str
     species: Optional[str]
     variety: Optional[str]
@@ -139,7 +139,7 @@ def publish_discovery_for_farm(farm):
     uid = farm_uid(farm)
     device = {
         "identifiers": [f"farm_{uid}"],
-        "name": f"{farm.name}",
+        "name": f"farm_{farm.name}",
         "manufacturer": "Mydroponics",
         "model": "Modular Hydroponic Tower ",
         "sw_version": mqtt_version
@@ -147,7 +147,7 @@ def publish_discovery_for_farm(farm):
     # Status sensor
     status_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/farm_{uid}_status/config"
     status_cfg_payload = {
-        "name": f"{farm.name} Status",
+        "name": f"Status",
         "unique_id": f"farm_{uid}_status",
         "state_topic": f"farms/{uid}/state",
         "value_template": "{{ value_json.status }}",
@@ -180,25 +180,25 @@ def delete_farm_from_ha(uid: str):
 
 # ---- Plants ----
 def plant_uid(plant) -> str:
-    if plant.qr_code:
+    #if plant.qr_code:
         # sanitize qr_code to alnum/underscore just in case
-        return "qr_" + "".join(ch if ch.isalnum() else "_" for ch in plant.qr_code)
+    #    return "qr_" + "".join(ch if ch.isalnum() else "_" for ch in plant.qr_code)
     return f"id{plant.id}"
 
 def publish_discovery_for_plant(plant):
     uid = plant_uid(plant)
     device = {
         "identifiers": [f"plant_{uid}"],
-        "name": f"{plant.species} {plant.variety}",
+        "name": f"plant_{plant.species}_{plant.variety or 'unknown'}",
         "manufacturer": "Mydroponics",
-        "model": "Plant",
+        "model": "Plant", 
         "sw_version": "1.0"
     }
 
     # Species sensor
     species_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_species/config"
     species_cfg_payload = {
-        "name": f"{plant.species}",
+        "name": "Species",
         "unique_id": f"plant_{uid}_species",
         "state_topic": f"plants/{uid}/state",
         "value_template": "{{ value_json.species }}",
@@ -212,7 +212,7 @@ def publish_discovery_for_plant(plant):
     # Variety sensor
     variety_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_variety/config"
     variety_cfg_payload = {
-        "name": f"{plant.variety}",
+        "name": f"Variety",
         "unique_id": f"plant_{uid}_variety",
         "state_topic": f"plants/{uid}/state",
         "value_template": "{{ value_json.variety }}",
@@ -224,7 +224,7 @@ def publish_discovery_for_plant(plant):
     # Active binary_sensor
     active_cfg_topic = f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_active/config"
     active_cfg_payload = {
-        "name": f"Plant {uid} Active",
+        "name": f"Plant Active",
         "unique_id": f"plant_{uid}_active",
         "state_topic": f"plants/{uid}/state",
         "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
@@ -373,7 +373,7 @@ def update_floor(floor_id: int, floor: FloorCreate = Body(...), db: Session = De
     db_floor = db.query(Floor).get(floor_id)
     if not db_floor:
         raise HTTPException(status_code=404, detail="Floor not found")
-    db_floor.farm_id = floor.farm_id
+    #db_floor.farm_id = floor.farm_id
     db_floor.name = floor.name
     db_floor.level = floor.level
     db.commit()
@@ -407,7 +407,7 @@ def update_pot(pot_id: int, pot: PotCreate = Body(...), db: Session = Depends(ge
     db_pot = db.query(Pot).get(pot_id)
     if not db_pot:
         raise HTTPException(status_code=404, detail="Pot not found")
-    db_pot.floor_id = pot.floor_id
+    #db_pot.floor_id = pot.floor_id
     db_pot.location_code = pot.location_code
     db.commit()
     db.refresh(db_pot)
@@ -446,7 +446,7 @@ def update_plant(plant_id: int, plant: PlantCreate = Body(...), db: Session = De
     db_plant = db.query(Plant).get(plant_id)
     if not db_plant:
         raise HTTPException(status_code=404, detail="Plant not found")
-    db_plant.pot_id = plant.pot_id
+    #db_plant.pot_id = plant.pot_id
     db_plant.qr_code = plant.qr_code
     db_plant.species = plant.species
     db_plant.variety = plant.variety
