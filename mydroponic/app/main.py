@@ -210,16 +210,16 @@ def publish_discovery_for_plant(plant):
     mqtt_client.publish(species_cfg_topic, json.dumps(species_cfg_payload), retain=True)
 
     # Variety sensor
-    variety_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_variety/config"
-    variety_cfg_payload = {
-        "name": f"Variety",
-        "unique_id": f"plant_{uid}_variety",
-        "state_topic": f"plants/{uid}/state",
-        "value_template": "{{ value_json.variety }}",
-        "icon": "mdi:flower-outline",
-        "device": device
-    }
-    mqtt_client.publish(variety_cfg_topic, json.dumps(variety_cfg_payload), retain=True)
+    #variety_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_variety/config"
+    #variety_cfg_payload = {
+    #    "name": f"Variety",
+    #    "unique_id": f"plant_{uid}_variety",
+    #    "state_topic": f"plants/{uid}/state",
+    #    "value_template": "{{ value_json.variety }}",
+    #    "icon": "mdi:flower-outline",
+    #    "device": device
+    #}
+    #mqtt_client.publish(variety_cfg_topic, json.dumps(variety_cfg_payload), retain=True)
 
     # Active binary_sensor
     active_cfg_topic = f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_active/config"
@@ -236,7 +236,7 @@ def publish_discovery_for_plant(plant):
     mqtt_client.publish(active_cfg_topic, json.dumps(active_cfg_payload), retain=True)
 
     # QR sensor
-    qr_cfg_topic = f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_qr/config"
+    qr_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_qr/config"
     qr_cfg_payload = {
         "name": f"Plant QR Code",
         "unique_id": f"plant_{uid}_active",
@@ -275,6 +275,35 @@ def delete_plant_from_ha(uid: str):
     for t in topics:
         mqtt_client.publish(t, b"", retain=True)
 
+# ---- Server ----
+def publish_discovery_for_server():
+    uid = "server01"
+    device = {
+        "identifiers": [f"{uid}"],
+        "name": f"Mydroponic Server",
+        "manufacturer": "Mydroponics",
+        "model": "Server", 
+        "sw_version": "1.0"
+    }
+    server_cfg_topic = f"{DISCOVERY_PREFIX}/sensor/{uid}_status/config"
+    server_cfg_payload = {
+        "name": f"Server Status",
+        "unique_id": f"{uid}_status",
+        "state_topic": f"{uid}_status/state",
+        "value_template": "ON",
+        "device": device
+    }
+    mqtt_client.publish(server_cfg_topic, json.dumps(server_cfg_payload), retain=True)
+
+def publish_state_for_server():
+    uid = "server01"
+    topic = f"{uid}_status/state"
+    payload = {
+        "id": uid,
+        "active": True
+    }
+    mqtt_client.publish(topic, json.dumps(payload), retain=True)
+
 # -------------------
 # FastAPI App
 # -------------------
@@ -301,6 +330,9 @@ def on_startup():
             publish_state_for_farm(farm)
     finally:
         db.close()
+    
+    publish_discovery_for_server()
+    publish_state_for_server()
 
 
 # ---- Health Check ----
@@ -442,6 +474,8 @@ def create_plant(plant: PlantCreate, db: Session = Depends(get_db)):
     db.add(db_plant)
     db.commit()
     db.refresh(db_plant)
+    publish_discovery_for_plant(db_plant)
+    publish_state_for_plant(db_plant)
     return db_plant
 
 @app.get("/plants", response_model=List[PlantOut])
