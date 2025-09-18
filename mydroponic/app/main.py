@@ -42,7 +42,7 @@ class Farm(Base):
 class Floor(Base):
     __tablename__ = "floors"
     id = Column(Integer, primary_key=True, index=True)
-    farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=False)
+    #farm_id = Column(Integer, ForeignKey("farms.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     level = Column(Integer)
     created_at = Column(TIMESTAMP, server_default=func.now())
@@ -52,7 +52,7 @@ class Floor(Base):
 class Pot(Base):
     __tablename__ = "pots"
     id = Column(Integer, primary_key=True, index=True)
-    floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
+    #floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
     location_code = Column(String)
     created_at = Column(TIMESTAMP, server_default=func.now())
     #floor = relationship("Floor", back_populates="pots")
@@ -61,7 +61,7 @@ class Pot(Base):
 class Plant(Base):
     __tablename__ = "plants"
     id = Column(Integer, primary_key=True, index=True)
-    pot_id = Column(Integer, ForeignKey("pots.id", ondelete="SET NULL"))
+    #pot_id = Column(Integer, ForeignKey("pots.id", ondelete="SET NULL"))
     qr_code = Column(String, unique=True)
     species = Column(String)
     variety = Column(String)
