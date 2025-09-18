@@ -235,12 +235,24 @@ def publish_discovery_for_plant(plant):
     }
     mqtt_client.publish(active_cfg_topic, json.dumps(active_cfg_payload), retain=True)
 
+    # QR sensor
+    qr_cfg_topic = f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_qr/config"
+    qr_cfg_payload = {
+        "name": f"Plant QR Code",
+        "unique_id": f"plant_{uid}_active",
+        "state_topic": f"plants/{uid}/state",
+        "value_template": "{{ value_json.qr_code | default('N/A') }}",
+        "icon": "mdi:qrcode",
+        "device": device
+    }
+    mqtt_client.publish(qr_cfg_topic, json.dumps(qr_cfg_payload), retain=True)
+
 def publish_state_for_plant(plant):
     uid = plant_uid(plant)
     topic = f"plants/{uid}/state"
     payload = {
         "id": plant.id,
-        "pot_id": plant.pot_id,
+        #"pot_id": plant.pot_id,
         "qr_code": plant.qr_code,
         "species": plant.species,
         "variety": plant.variety,
@@ -257,6 +269,7 @@ def delete_plant_from_ha(uid: str):
         f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_species/config",
         f"{DISCOVERY_PREFIX}/sensor/plant_{uid}_variety/config",
         f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_active/config",
+        f"{DISCOVERY_PREFIX}/binary_sensor/plant_{uid}_qr/config",
         f"plants/{uid}/state"
     ]
     for t in topics:
